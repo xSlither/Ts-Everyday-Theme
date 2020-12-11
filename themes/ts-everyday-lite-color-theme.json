@@ -1,0 +1,219 @@
+{
+	"name": "TS Everyday Lite",
+	"type": "dark",
+	"include": "./defaults/dark_plus.json",
+
+
+	"tokenColors": [
+		
+		{
+			"scope": ["meta.decorator.ts"],
+			"settings": {
+				"fontStyle": "underline"
+			}
+		},
+		{
+			"scope": ["punctuation.decorator.ts"],
+			"settings": {
+				"foreground": "#ff1515",
+			}
+		},
+		{
+			"scope": ["punctuation.terminator"],
+			"settings": {
+				"foreground": "#58fcee",
+			}
+		},
+		{
+			"scope": ["punctuation.separator.key-value.ts"],
+			"settings": {
+				"foreground": "#ffffff",
+			}
+		},
+		{
+			"scope": ["punctuation.definition.typeparameters.begin.ts",
+			"punctuation.definition.typeparameters.end.ts"],
+			"settings": {
+				"foreground": "#d162c8",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["variable.other.readwrite.alias"],
+			"settings": {
+				"foreground": "#71c89c",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["punctuation.definition.block.tag.jsdoc"],
+			"settings": {
+				"foreground": "#85c8ff",
+				"fontStyle": ""
+			}
+		},
+		{
+			"scope": ["storage.type.class.jsdoc"],
+			"settings": {
+				"foreground": "#569CD6",
+				"fontStyle": ""
+			}
+		},
+		{
+			"scope": ["entity.name.type.instance.jsdoc"],
+			"settings": {
+				"foreground": "#4EC9B0",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["variable.other.jsdoc"],
+			"settings": {
+				"foreground": "#9CDCFE",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["entity.name.type.ts"],
+			"settings": {
+				"foreground": "#4EC9B0",
+			}
+		},
+		{
+			"scope": ["comment.line.double-slash.ts"],
+			"settings": {
+				"foreground": "#505050",
+			}
+		},
+		{
+			"scope": ["variable.language.this", "keyword.operator.expression.instanceof.ts",
+			"keyword.operator.expression.typeof.ts"],
+			"settings": {
+				"foreground": "#569CD6",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["keyword.control.flow"],
+			"settings": {
+				"fontStyle": "italic bold",
+			}
+		},
+		{
+			"scope": ["keyword.control.as.ts"],
+			"settings": {
+				"foreground": "#d162c8",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["keyword.operator.type.annotation.ts"],
+			"settings": {
+				"foreground": "#4EC9B0",
+			}
+		},
+		{
+			"scope": ["new.expr.ts"],
+			"settings": {
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["keyword.operator.type.ts", "keyword.operator.logical.ts"],
+			"settings": {
+				"foreground": "#ff1515",
+			}
+		},
+		{
+			"scope": ["keyword.operator.new.ts"],
+			"settings": {
+				"foreground": "#d162c8",
+				"fontStyle": "italic underline"
+			}
+		},
+		{
+			"scope": ["keyword.control.trycatch.ts"],
+			"settings": {
+				"fontStyle": "bold"
+			}
+		},
+		{
+			"scope": ["variable.other.object.ts"],
+			"settings": {
+				"foreground": "#4EC9B0",
+			}
+		},
+		{
+			"scope": ["keyword.control.loop.ts"],
+			"settings": {
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["storage.modifier.async.ts"],
+			"settings": {
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"scope": ["keyword.operator.expression.keyof.ts",
+			"storage.type.property.ts"],
+			"settings": {
+				"foreground": "#55b0fa",
+			}
+		},
+		{
+			"scope": ["keyword.operator.rest.ts"],
+			"settings": {
+				"foreground": "#f1cd29",
+			}
+		},
+		{
+			"scope": ["keyword.operator.ternary.ts"],
+			"settings": {
+				"fontStyle": "italic bold"
+			}
+		},
+		{
+			"scope": ["variable.other.constant.ts", "variable.other.constant.object.ts"],
+			"settings": {
+				"fontStyle": "bold"
+			}
+		},
+		{
+			"scope": ["storage.type.function.arrow.ts"],
+			"settings": {
+				"foreground": "#ff15b9",
+				"fontStyle": "italic bold"
+			}
+		},
+		{
+			"scope": ["constant.numeric.decimal.ts"],
+			"settings": {
+				"fontStyle": "bold"
+			}
+		}
+
+	],
+
+
+	"semanticTokenColors": {
+
+		"variable.defaultLibrary": "#4EC9B0",
+		"function": "#dcdcaa",
+		"function.readonly": {
+			"foreground": "#7c94fd",
+			"fontStyle": "bold"
+		},
+
+		"member": "#dcdcaa",
+		"member.async": "#f77a7a",
+		"member.defaultLibrary": "#dcdcaa",
+		"member.declaration": "#dcdcaa",
+		"member.declaration.async": "#dcdcaa",
+
+		"parameter" : {"underline": true},
+		"parameter.declaration" : {"fontStyle": "italic"}
+
+	}
+}

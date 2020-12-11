@@ -1,0 +1,28 @@
+{
+    "publisher": "Slither",
+
+    "name": "ts-everyday-theme",
+    "displayName": "TS Everyday Theme",
+    "description": "A theme designed specifically for everyday use with TypeScript",
+    "version": "1.0.0",
+    "engines": {
+        "vscode": "^1.47.0"
+    },
+    "categories": [
+        "Themes"
+    ],
+    "contributes": {
+        "themes": [
+            {
+                "label": "TS Everyday",
+                "uiTheme": "vs-dark",
+                "path": "./themes/ts-everyday-color-theme.json"
+            },
+            {
+                "label": "TS Everyday Lite",
+                "uiTheme": "vs-dark",
+                "path": "./themes/ts-everyday-lite-color-theme.json"
+            }
+        ]
+    }
+}
