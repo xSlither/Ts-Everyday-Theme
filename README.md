@@ -1,6 +1,6 @@
 # Ts-Everyday-Theme
 
-[![VS Marketplace version][marketplace-version-image]][marketplace-url] [![VS Marketplace installs][marketplace-installs-image]][marketplace-url] [![MIT License][license-image]][license-url]
+[![MIT License][license-image]][license-url]
 
 *A pair of dark themes for VS Code, designed specifically for everyday use with TypeScript*
 
@@ -39,31 +39,12 @@ The custom highlighting comes in two layers: classic **TextMate rules** (scoped 
 
 ### The TextMate rules
 
-**Type-level syntax** gets pulled away from runtime code:
+The general idea:
 
-* Generic type parameter brackets (`<` / `>`) are *pink italics* (`#d162c8`), and the `as` cast keyword matches them
-* Union & intersection operators in type positions (`|` / `&`) are **bright red** (`#ff1515`)- and so are the runtime logical operators (`&&` / `||`), since they play the same role at runtime that unions play in types
-* The `:` type annotation operator is teal (`#4EC9B0`), the same color as the types it introduces
-* `keyof`, and the `get` / `set` accessor keywords, are their own shade of blue (`#55b0fa`)
-
-**Control flow** is made hard to miss:
-
-* Flow keywords like `return`, `await`, & `yield` are ***bold italics***
-* `try` / `catch` are **bold**, loop keywords are *italic*, and the ternary `?` / `:` is ***bold italic***
-* The arrow of an arrow function (`=>`) is hot-pink ***bold italic*** (`#ff15b9`), so callbacks jump out of any expression
-* `new` is *pink, italicized, and underlined*
-
-**Everything else** that I found myself squinting at:
-
-* Decorators are underlined, with a **bright red** `@` (`#ff1515`)- you will never miss one again
-* Statement terminators (`;`) are cyan (`#58fcee`), which makes the *end* of each statement easy to track in dense code
-* Import aliases (`import { EventEmitter as Emitter }`) are *green italics* (`#71c89c`) wherever they're used
-* `this`, `typeof`, & `instanceof` are *blue italics* (`#569CD6`)
-* Object variables (the `dolores` in `dolores.analyze()`) are teal (`#4EC9B0`), tying an instance visually to its type
-* Constants and numeric literals are **bold**
-* Rest & spread (`...`) is yellow (`#f1cd29`)
-* JSDoc gets its own treatment: block tags like `@param` are light blue (`#85c8ff`), types are *teal italics*, and documented variables are *light-blue italics*
-* Plain `//` comments are dimmed way down (`#505050`), so documentation stands out but noise doesn't
+* **Type-level syntax stands apart from runtime code** - generic brackets (`<` / `>`) & `as` are *pink italics*, type operators (`|` / `&`) are red, and type annotations are teal
+* **Control flow is hard to miss** - keywords like `return` & `await` are ***bold italics***, `try` / `catch` is bold, `new` is underlined, and the arrow of an arrow function (`=>`) is hot-pink
+* **Structural punctuation gets color** - decorators have a bright red `@`, semicolons are cyan, and rest / spread (`...`) is yellow
+* **Signal over noise** - JSDoc tags, types, & variables each get their own styling, while plain `//` comments are dimmed way down
 
 ### The semantic tokens
 
@@ -76,16 +57,9 @@ Both themes also enable VS Code's [semantic highlighting](https://code.visualstu
 
 Let's take a look at lines 42 & 58 of the sample above. As you can see, `analyze` is gold where the `async` method is *declared*, but salmon where it is *called* from- that's the `member.async` / `member.declaration.async` pair doing its job. That one rule alone has saved me from more than a few forgotten `await`s.
 
-## How were these previews rendered?
+## Generating the previews
 
-Here's the fun part: those screenshots above are **not** screenshots of VS Code. Since VS Code's tokenizer & themes are all open-source JavaScript, the previews are rendered *from the theme files themselves* by a small harness in the [`preview/`](preview/) folder:
-
-1. Each theme's `include` chain (`dark_plus.json` → `dark_vs.json` → `dark_defaults.json`) is flattened, exactly the way VS Code resolves it
-2. [`samples/sample.ts`](samples/sample.ts) is tokenized with [Shiki](https://shiki.style/), which uses the very same TextMate grammar engine (and the same TypeScript grammar) that VS Code uses
-3. The theme's `semanticTokenColors` are re-applied on top of the TextMate tokens, mimicking what the TypeScript language service contributes at runtime
-4. A mock VS Code workbench is built around the code using the theme's own `colors` contributions (falling back to stock Dark+ values, just like VS Code does), and headless Chromium screenshots the result
-
-That means the previews are generated straight from `themes/*.json`- if a color changes in the theme, re-running the harness changes the screenshots. To rebuild them yourself:
+The screenshots above are rendered straight from the theme JSON files by the harness in [`preview/`](preview/). If a color changes in the themes, rebuild them with:
 
 ```batchfile
 cd preview
@@ -93,16 +67,10 @@ npm install
 npm run build
 ```
 
-> _Note_: Shiki has no language service, so the semantic classifications for the sample file are hand-mapped inside `preview/build-previews.js`. They match what VS Code's TypeScript service produces for that file, but if you change the sample you may need to update the mapping too.
-
-## Suggestions?
-
-If there's a piece of TypeScript syntax you'd like to see styled- or if one of these colors offends you deeply- open a new issue for me to review!
+---
 
 **Enjoy!** :smile:
 
-[marketplace-version-image]: https://img.shields.io/visual-studio-marketplace/v/Slither.ts-everyday-theme
-[marketplace-installs-image]: https://img.shields.io/visual-studio-marketplace/i/Slither.ts-everyday-theme
 [marketplace-url]: https://marketplace.visualstudio.com/items?itemName=Slither.ts-everyday-theme
 [license-image]: https://img.shields.io/github/license/xSlither/Ts-Everyday-Theme
 [license-url]: LICENSE
