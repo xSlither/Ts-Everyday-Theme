@@ -53,7 +53,7 @@ Both themes also enable VS Code's [semantic highlighting](https://code.visualstu
 * **Readonly functions** (i.e. `const` arrow functions) are **bold** periwinkle (`#7c94fd`), to distinguish them from regular `function` declarations
 * **Default library variables** like `JSON` & `Reflect` are teal (`#4EC9B0`), matching the built-in types they belong to
 
-Let's take a look at lines 42 & 58 of the sample above. As you can see, `simulate` is gold where the `async` method is *declared*, but salmon where it is *called* from- that's the `member.async` / `member.declaration.async` pair doing its job, flagging at the call site exactly where an `await` belongs.
+Let's take a look at lines 43 & 59 of the sample above. As you can see, `simulate` is gold where the `async` method is *declared*, but salmon where it is *called* from- that's the `member.async` / `member.declaration.async` pair doing its job, flagging at the call site exactly where an `await` belongs.
 
 ## Generating the previews
 

@@ -1,5 +1,6 @@
 import { EventEmitter as Emitter } from 'events';
 
+// WarGames, 1983 - the only winning move is not to play
 type SimulationState = 'standby' | 'playing' | 'aborted';
 
 interface SimulationOptions {
@@ -31,7 +32,7 @@ export class Wopr<T extends SimulationOptions> extends Emitter {
 
     constructor(private options: T, ...aliases: string[]) {
         super();
-        this.defcon = clamp(options.defcon, 1, 5);
+        this.defcon = clamp(options.defcon, 1, 5); // DEFCON 5 = peace, 1 = war
         this._state = options.state ?? 'standby';
         Wopr.registry.set(options.name, this as Wopr<SimulationOptions>);
     }

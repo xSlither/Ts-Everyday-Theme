@@ -8,23 +8,29 @@
  *      dark_plus.json -> dark_vs.json -> dark_defaults.json), exactly like VS Code does.
  *   2. Tokenizes samples/sample.ts with Shiki - the same TextMate grammar engine
  *      VS Code itself uses - against the flattened theme.
- *   3. Re-applies the theme's "semanticTokenColors" on top of the TextMate tokens,
- *      mimicking what the TypeScript language service contributes at runtime
- *      (Shiki alone has no language service, so this pass is hand-mapped for the sample).
+ *   3. Runs the real TypeScript language service over the sample and asks it for the
+ *      same semantic classifications VS Code's TypeScript extension consumes
+ *      (getEncodedSemanticClassifications, 2020 format), then resolves each one to a
+ *      style the way VS Code does: the theme's "semanticTokenColors" win by specificity,
+ *      and anything the theme doesn't style falls back to the standard token-type ->
+ *      scope map, resolved against the flattened TextMate colors.
  *   4. Wraps the highlighted code in a mock VS Code workbench built from the theme's
  *      own "colors" contributions (with stock Dark+ defaults as the fallback).
  *   5. Screenshots the result with headless Chromium via Playwright.
  */
 
 import { readFileSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { parse as parseJsonc } from 'jsonc-parser';
 import { createHighlighter, FontStyle } from 'shiki';
 import { chromium } from 'playwright-core';
+import ts from 'typescript';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
+const require = createRequire(import.meta.url);
 
 const CHROMIUM_PATH = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium';
 
@@ -60,76 +66,212 @@ function flattenTheme(path) {
     };
 }
 
-//---------------------------------------------------------------------------
-// ++ Semantic token overlay
-//---------------------------------------------------------------------------
-
-/* The TypeScript language service classifies these identifiers in sample.ts at
- * runtime; VS Code then styles them via the theme's semanticTokenColors. Shiki
- * has no language service, so the classifications for the sample are declared
- * here and re-applied over the TextMate tokens. */
-const PARAMETERS = new Set(['value', 'min', 'max', 'password', 'target', 'options', 'aliases', 'next', 'scenario']);
-const READONLY_FUNCTIONS = new Set(['clamp']);
-const ASYNC_MEMBERS = new Set(['simulate']);
-const DEFAULT_LIBRARY_VARIABLES = new Set(['JSON', 'Reflect']);
-
-function normalizeSemanticRule(rule) {
-    if (typeof rule === 'string') { return { foreground: rule }; }
-    const out = { foreground: rule.foreground };
-    if (typeof rule.fontStyle === 'string') {
-        out.fontStyle = 0;
-        if (rule.fontStyle.includes('italic')) { out.fontStyle |= FontStyle.Italic; }
-        if (rule.fontStyle.includes('bold')) { out.fontStyle |= FontStyle.Bold; }
-        if (rule.fontStyle.includes('underline')) { out.fontStyle |= FontStyle.Underline; }
+/** Resolves a TextMate scope to its theme color, the way VS Code matches scopes:
+ *  a rule selector matches a scope when it is a dot-segment prefix of it, and the
+ *  longest (most specific) matching selector wins. */
+function makeScopeResolver(tokenColors) {
+    const rules = [];
+    for (const rule of tokenColors) {
+        if (!rule.settings) { continue; }
+        const scopes = Array.isArray(rule.scope) ? rule.scope
+            : typeof rule.scope === 'string' ? rule.scope.split(',').map((s) => s.trim())
+            : [];
+        for (const selector of scopes) {
+            if (selector) { rules.push({ selector, settings: rule.settings }); }
+        }
     }
-    if (rule.underline === true) { out.addUnderline = true; }
+    return (scope) => {
+        let best = null, bestLen = -1;
+        for (const { selector, settings } of rules) {
+            if ((scope === selector || scope.startsWith(selector + '.')) && selector.length > bestLen) {
+                best = settings; bestLen = selector.length;
+            }
+        }
+        return best;
+    };
+}
+
+//---------------------------------------------------------------------------
+// ++ Real TypeScript semantic classifications
+//---------------------------------------------------------------------------
+
+// TypeScript's 2020 classification legend (services/classifier2020.ts)
+const TS_TOKEN_TYPES = ['class', 'enum', 'interface', 'namespace', 'typeParameter', 'type',
+    'parameter', 'variable', 'enumMember', 'property', 'function', 'member'];
+const TS_TOKEN_MODIFIERS = ['declaration', 'static', 'async', 'readonly', 'defaultLibrary', 'local'];
+
+/** Drives the actual TypeScript language service (the same API VS Code's TS extension
+ *  uses) and returns one entry per classified identifier: { start, length, type, mods }. */
+function classifySemantics(code, fileName = '/sample.ts') {
+    const tsLibDir = dirname(require.resolve('typescript'));
+    const files = { [fileName]: code };
+    const host = {
+        getScriptFileNames: () => [fileName],
+        getScriptVersion: () => '1',
+        getScriptSnapshot: (f) => {
+            if (files[f] !== undefined) { return ts.ScriptSnapshot.fromString(files[f]); }
+            try { return ts.ScriptSnapshot.fromString(readFileSync(f, 'utf8')); } catch { return undefined; }
+        },
+        getCurrentDirectory: () => '/',
+        getCompilationSettings: () => ({
+            target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, experimentalDecorators: true
+        }),
+        getDefaultLibFileName: (o) => join(tsLibDir, ts.getDefaultLibFileName(o)),
+        fileExists: (f) => files[f] !== undefined || ts.sys.fileExists(f),
+        readFile: (f) => files[f] ?? ts.sys.readFile(f),
+        readDirectory: ts.sys.readDirectory,
+        directoryExists: ts.sys.directoryExists,
+        getDirectories: ts.sys.getDirectories
+    };
+    const svc = ts.createLanguageService(host, ts.createDocumentRegistry());
+    const { spans } = svc.getEncodedSemanticClassifications(
+        fileName, { start: 0, length: code.length }, ts.SemanticClassificationFormat.TwentyTwenty);
+
+    const out = new Map();
+    for (let i = 0; i < spans.length; i += 3) {
+        const start = spans[i], length = spans[i + 1], cls = spans[i + 2];
+        const type = TS_TOKEN_TYPES[(cls >> 8) - 1];
+        const modBits = cls & 0xff;
+        const mods = new Set(TS_TOKEN_MODIFIERS.filter((_, b) => modBits & (1 << b)));
+        if (type) { out.set(start, { start, length, type, mods }); }
+    }
     return out;
 }
 
-/** Applies the flattened theme's semanticTokenColors to the token stream,
- *  matching VS Code's rule precedence (most-specific selector wins; a string
- *  fontStyle replaces the token's style, boolean flags add to it). */
-function applySemanticOverlay(lines, semanticTokenColors) {
-    const rule = (sel) => semanticTokenColors[sel] !== undefined
-        ? normalizeSemanticRule(semanticTokenColors[sel]) : undefined;
-    const seen = new Map();
+//---------------------------------------------------------------------------
+// ++ Semantic style resolution (mirrors VS Code's precedence)
+//---------------------------------------------------------------------------
 
-    for (const line of lines) {
-        // Comments never receive semantic tokens from the language service
-        const first = line.map((t) => t.content.trim()).find((s) => s !== '') ?? '';
-        if (first.startsWith('//') || first.startsWith('/*') || first.startsWith('*')) { continue; }
-        let prev = '';
-        for (const token of line) {
-            const word = token.content.trim();
-            if (!/^[A-Za-z_$][\w$]*$/.test(word)) {
-                if (word !== '') { prev = word; }
-                continue;
-            }
-            const count = seen.get(word) ?? 0;
-            seen.set(word, count + 1);
-            const isDeclaration = count === 0;
-            const afterDot = prev === '.';
-            prev = word;
+// VS Code's default token-type -> TextMate scope map (tokenClassificationRegistry.ts)
+const DEFAULT_TYPE_SCOPES = {
+    namespace: ['entity.name.namespace'],
+    type: ['entity.name.type', 'support.type'],
+    class: ['entity.name.type.class', 'support.class'],
+    interface: ['entity.name.type.interface'],
+    enum: ['entity.name.type.enum'],
+    typeParameter: ['entity.name.type.parameter'],
+    function: ['entity.name.function', 'support.function'],
+    member: ['entity.name.function.member', 'support.function'], // TS "member" == VS Code "method"
+    variable: ['variable.other.readwrite', 'entity.name.variable'],
+    parameter: ['variable.parameter'],
+    property: ['variable.other.property'],
+    enumMember: ['variable.other.enummember']
+};
+// Modifier-keyed default rules
+const DEFAULT_READONLY_SCOPES = {
+    variable: ['variable.other.constant'],
+    property: ['variable.other.constant.property']
+};
 
-            let semantic;
-            if (PARAMETERS.has(word) && !(afterDot && word === 'options')) {
-                // "options" is a parameter property; "this.options" resolves as a
-                // property access, which this theme leaves to the TextMate colors.
-                semantic = (isDeclaration ? rule('parameter.declaration') : undefined) ?? rule('parameter');
-            } else if (READONLY_FUNCTIONS.has(word)) {
-                semantic = (isDeclaration ? rule('function.declaration.readonly') : undefined) ?? rule('function.readonly');
-            } else if (ASYNC_MEMBERS.has(word)) {
-                semantic = (isDeclaration ? rule('member.declaration.async') : undefined) ?? rule('member.async');
-            } else if (DEFAULT_LIBRARY_VARIABLES.has(word)) {
-                semantic = rule('variable.defaultLibrary');
-            }
-            if (!semantic) { continue; }
+function parseFontStyle(str) {
+    return {
+        italic: /italic/.test(str),
+        bold: /bold/.test(str),
+        underline: /underline/.test(str)
+    };
+}
 
-            if (semantic.foreground) { token.color = semantic.foreground; }
-            if (semantic.fontStyle !== undefined) { token.fontStyle = semantic.fontStyle; }
-            if (semantic.addUnderline) { token.fontStyle = (token.fontStyle > 0 ? token.fontStyle : 0) | FontStyle.Underline; }
+/** Parses a "type.mod1.mod2" semanticTokenColors selector. */
+function parseSelector(key) {
+    const [type, ...mods] = key.split('.');
+    return { type, mods };
+}
+
+function normalizeSemanticSettings(value) {
+    if (typeof value === 'string') { return { foreground: value }; }
+    return value;
+}
+
+/** Builds a resolver that, given a TS classification, returns the final
+ *  { color, style } VS Code would paint - theme semantic rules first (by
+ *  specificity), then the standard scope fallback for anything unstyled. */
+function makeSemanticResolver(flat) {
+    const scopeColor = makeScopeResolver(flat.tokenColors);
+
+    const themeRules = Object.entries(flat.semanticTokenColors).map(([key, value]) => ({
+        ...parseSelector(key),
+        settings: normalizeSemanticSettings(value)
+    }));
+
+    const fallbackForeground = (cls) => {
+        const scopeLists = [];
+        if (cls.mods.has('readonly') && DEFAULT_READONLY_SCOPES[cls.type]) {
+            scopeLists.push(DEFAULT_READONLY_SCOPES[cls.type]);
         }
-    }
+        if (DEFAULT_TYPE_SCOPES[cls.type]) { scopeLists.push(DEFAULT_TYPE_SCOPES[cls.type]); }
+        for (const scopes of scopeLists) {
+            for (const scope of scopes) {
+                const s = scopeColor(scope);
+                if (s && s.foreground) { return s.foreground; }
+            }
+        }
+        return undefined;
+    };
+
+    return (cls) => {
+        // Most-specific matching theme rule (all its modifiers must be present)
+        let rule = null, ruleSpecificity = -1;
+        for (const r of themeRules) {
+            if (r.type !== cls.type) { continue; }
+            if (!r.mods.every((m) => cls.mods.has(m))) { continue; }
+            if (r.mods.length > ruleSpecificity) { rule = r; ruleSpecificity = r.mods.length; }
+        }
+
+        const color = (rule && rule.settings.foreground) ? rule.settings.foreground : fallbackForeground(cls);
+
+        // fontStyle: only overridden when the theme rule explicitly sets one; a
+        // string replaces the style outright, booleans add to it.
+        let style;
+        if (rule) {
+            const s = rule.settings;
+            if (typeof s.fontStyle === 'string') { style = parseFontStyle(s.fontStyle); }
+            if (s.underline === true || s.bold === true || s.italic === true) {
+                style = style ?? { italic: false, bold: false, underline: false, additive: true };
+                if (s.underline === true) { style.underline = true; }
+                if (s.bold === true) { style.bold = true; }
+                if (s.italic === true) { style.italic = true; }
+            }
+        }
+        return { color, style };
+    };
+}
+
+//---------------------------------------------------------------------------
+// ++ Applying semantics onto the TextMate token stream
+//---------------------------------------------------------------------------
+
+function styleToBits(style, existing) {
+    // "additive" styles (boolean modifiers) layer on top of the TextMate style;
+    // a fontStyle string starts from scratch.
+    let bits = style.additive ? (existing > 0 ? existing : 0) : 0;
+    if (style.italic) { bits |= FontStyle.Italic; }
+    if (style.bold) { bits |= FontStyle.Bold; }
+    if (style.underline) { bits |= FontStyle.Underline; }
+    return bits;
+}
+
+/** Overlays the resolved semantic styles onto Shiki's TextMate tokens by matching
+ *  each classified identifier to the token that starts at the same source offset. */
+function applySemantics(code, lines, classifications, resolve) {
+    const lineStarts = [];
+    let acc = 0;
+    for (const text of code.split('\n')) { lineStarts.push(acc); acc += text.length + 1; }
+
+    lines.forEach((line, li) => {
+        let col = 0;
+        for (const token of line) {
+            const lead = token.content.length - token.content.trimStart().length;
+            const start = lineStarts[li] + col + lead;
+            col += token.content.length;
+
+            const cls = classifications.get(start);
+            if (!cls || cls.length !== token.content.trim().length) { continue; }
+
+            const { color, style } = resolve(cls);
+            if (color) { token.color = color; }
+            if (style) { token.fontStyle = styleToBits(style, token.fontStyle); }
+        }
+    });
 }
 
 //---------------------------------------------------------------------------
@@ -292,7 +434,7 @@ WOPR simulated scenario 'name': true</div>
     </div>
     <div class="statusbar">
         <div class="group"><span>&#8916; master</span><span>&#8855; 0 &#9888; 0</span></div>
-        <div class="group"><span>Ln 38, Col 42</span><span>Spaces: 4</span><span>UTF-8</span><span>LF</span><span>TypeScript</span></div>
+        <div class="group"><span>Ln 43, Col 42</span><span>Spaces: 4</span><span>UTF-8</span><span>LF</span><span>TypeScript</span></div>
     </div>
 </div>
 </body></html>`;
@@ -310,6 +452,7 @@ const THEMES = [
 const code = readFileSync(resolve(ROOT, 'samples/sample.ts'), 'utf8').trimEnd();
 mkdirSync(resolve(ROOT, 'assets'), { recursive: true });
 
+const classifications = classifySemantics(code);
 const flats = THEMES.map((t) => ({ ...t, flat: flattenTheme(resolve(ROOT, t.file)) }));
 
 const highlighter = await createHighlighter({
@@ -322,7 +465,7 @@ const page = await browser.newPage({ viewport: { width: 1240, height: 800 }, dev
 
 for (const t of flats) {
     const lines = highlighter.codeToTokensBase(code, { lang: 'typescript', theme: t.id });
-    applySemanticOverlay(lines, t.flat.semanticTokenColors);
+    applySemantics(code, lines, classifications, makeSemanticResolver(t.flat));
 
     const editorFg = t.flat.colors['editor.foreground'] ?? '#D4D4D4';
     const html = renderWindow(t.flat, renderCode(lines, editorFg), t.tabLabel);
