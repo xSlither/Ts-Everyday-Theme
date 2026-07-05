@@ -1,6 +1,6 @@
 import { EventEmitter as Emitter } from 'events';
 
-// WarGames, 1983 - the only winning move is not to play
+// "The only winning move is not to play"
 type SimulationState = 'standby' | 'playing' | 'aborted';
 
 interface SimulationOptions {
