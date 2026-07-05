@@ -68,9 +68,9 @@ function flattenTheme(path) {
  * runtime; VS Code then styles them via the theme's semanticTokenColors. Shiki
  * has no language service, so the classifications for the sample are declared
  * here and re-applied over the TextMate tokens. */
-const PARAMETERS = new Set(['value', 'min', 'max', 'title', 'target', 'options', 'aliases', 'next', 'directive']);
+const PARAMETERS = new Set(['value', 'min', 'max', 'password', 'target', 'options', 'aliases', 'next', 'scenario']);
 const READONLY_FUNCTIONS = new Set(['clamp']);
-const ASYNC_MEMBERS = new Set(['analyze']);
+const ASYNC_MEMBERS = new Set(['simulate']);
 const DEFAULT_LIBRARY_VARIABLES = new Set(['JSON', 'Reflect']);
 
 function normalizeSemanticRule(rule) {
@@ -286,7 +286,7 @@ ${codeHtml}
             <div class="panel">
                 <div class="paneltabs"><span>PROBLEMS</span><span>OUTPUT</span><span>DEBUG CONSOLE</span><span class="active">TERMINAL</span></div>
                 <div class="term">$ tsc && node ./dist/sample.js
-Host 'Dolores' analyzed directive 'name': true</div>
+WOPR simulated scenario 'name': true</div>
             </div>
         </div>
     </div>
