@@ -1,6 +1,6 @@
 # Ts-Everyday-Theme
 
-[![MIT License][license-image]][license-url]
+[![VS Marketplace version][marketplace-version-image]][marketplace-url] [![VS Marketplace installs][marketplace-installs-image]][marketplace-url] [![MIT License][license-image]][license-url]
 
 *A pair of dark themes for VS Code, designed specifically for everyday use with TypeScript*
 
@@ -71,6 +71,8 @@ npm run build
 
 **Enjoy!** :smile:
 
+[marketplace-version-image]: https://vsmarketplacebadges.dev/version-short/Slither.ts-everyday-theme.svg
+[marketplace-installs-image]: https://vsmarketplacebadges.dev/installs-short/Slither.ts-everyday-theme.svg
 [marketplace-url]: https://marketplace.visualstudio.com/items?itemName=Slither.ts-everyday-theme
 [license-image]: https://img.shields.io/github/license/xSlither/Ts-Everyday-Theme
 [license-url]: LICENSE
