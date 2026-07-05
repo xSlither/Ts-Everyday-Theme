@@ -5,6 +5,10 @@
     "displayName": "TS Everyday Theme",
     "description": "A theme designed specifically for everyday use with TypeScript",
     "version": "1.0.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/xSlither/Ts-Everyday-Theme"
+    },
     "engines": {
         "vscode": "^1.47.0"
     },

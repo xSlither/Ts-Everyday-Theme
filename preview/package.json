@@ -1,0 +1,14 @@
+{
+    "name": "ts-everyday-theme-preview",
+    "private": true,
+    "type": "module",
+    "description": "Renders the README preview screenshots for TS Everyday Theme using Shiki + Chromium",
+    "scripts": {
+        "build": "node build-previews.js"
+    },
+    "devDependencies": {
+        "jsonc-parser": "^3.3.1",
+        "playwright-core": "^1.49.0",
+        "shiki": "^1.24.0"
+    }
+}
